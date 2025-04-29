@@ -1,7 +1,8 @@
 //这是一个用户欢迎页面，显示当前登录用户的名称，并附带一条问候信息
 <template>
   <div style="display: flex; grid-gap: 10px">
-    <div class="card" style="width: 33%; padding: 20px">
+    <div class="card" style="width: 33%; padding: 20px"  v-if="data.user.role === 'USER'">
+
       <div style="margin-bottom: 20px; font-size: 20px; font-weight: bold">Recommended movies</div>
       <div v-for="(item, index) in data.recommendList" :key="item.id" @click="goDetail(item.id)" style="cursor: pointer; margin-bottom: 10px">
         <div style="display: flex; grid-gap: 10px">
@@ -19,7 +20,7 @@
         </div>
       </div>
     </div>
-    <div class="card" style="width: 33%; padding: 20px">
+    <div class="card"  :style="{ width: data.user.role === 'USER' ? '33%' : '50%' }"    style="padding: 20px">
       <div style="margin-bottom: 20px; font-size: 20px; font-weight: bold">Movie rating list</div>
       <div v-for="(item, index) in data.filmList" :key="item.id" @click="goDetail(item.id)" style="cursor: pointer; margin-bottom: 10px">
         <div style="display: flex; grid-gap: 10px">
@@ -41,7 +42,7 @@
       </div>
     </div>
 
-    <div style="width: 33%; padding: 20px" class="card">
+    <div :style="{ width: data.user.role === 'USER' ? '33%' : '50%' }"  style="padding: 20px" class="card">
       <div style="margin-bottom: 20px; padding-left: 50px; font-size: 20px; font-weight: bold">System announcements</div>
       <el-timeline>
         <el-timeline-item v-for="item in data.noticeList" :key="item.id" :timestamp="item.time" placement="top">

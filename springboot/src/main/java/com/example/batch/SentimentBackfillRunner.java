@@ -4,7 +4,7 @@ import jakarta.annotation.Resource;
 import com.example.entity.Comment;
 import com.example.mapper.CommentMapper;
 import com.example.service.BaiduSentimentService;
-import com.example.service.SentimentResult;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +29,7 @@ public class SentimentBackfillRunner implements CommandLineRunner {
         // 2) 逐条调用百度接口并回写
         for (Comment c : list) {
             try {
-                SentimentResult r = baiduSentimentService.analyze(c.getComment());
+                BaiduSentimentService.SentimentResult r = baiduSentimentService.analyze(c.getComment());
                 commentMapper.updateSentiment(
                         c.getId(),
                         r.getSentiment(),

@@ -1,5 +1,5 @@
 package com.example.entity;
-
+//来把 “某个用户 – 对某部电影的兴趣程度（指数）” 这一行信息打包好//
 public class RelateDTO {
     /** 用户id */
     private Integer useId;

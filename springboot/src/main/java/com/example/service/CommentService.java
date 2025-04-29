@@ -9,6 +9,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import com.example.service.BaiduSentimentService.SentimentResult;
 
 @Service
 

@@ -1,5 +1,5 @@
 package com.example.common;
-
+//后端响应模板，让你的所有 REST 接口都返回同一套字段，方便前后端对接与错误处理。//
 public class Result {
     private String code;
     private String msg;

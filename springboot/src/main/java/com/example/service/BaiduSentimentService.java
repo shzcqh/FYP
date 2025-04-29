@@ -1,21 +1,22 @@
 package com.example.service;
 
+import cn.hutool.http.HtmlUtil;
+import cn.hutool.http.HttpUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import java.util.List;
+
 import java.util.Map;
 
 @Service
 public class BaiduSentimentService {
 
-    // 1. 对齐 application.yml 中的配置路径
-    //    application.yml 示例：
-    //    baidu:
-    //      nlp:
-    //        api-key: YOUR_API_KEY
-    //        secret-key: YOUR_SECRET_KEY
+    private static final Logger log = LoggerFactory.getLogger(BaiduSentimentService.class);
 
     @Value("${baidu.nlp.api-key}")
     private String apiKey;
@@ -23,81 +24,88 @@ public class BaiduSentimentService {
     @Value("${baidu.nlp.secret-key}")
     private String secretKey;
 
-    private final RestTemplate rest;
-
-    // 缓存 token 和过期时间
+    /* ------------ 内部缓存 ------------- */
     private String accessToken;
-    private long expiresAt;
+    private long   expiresAt;
 
-    public BaiduSentimentService(RestTemplate rest) {
-        this.rest = rest;
+    /* ------------ 对外结果 ------------- */
+    public static class SentimentResult {
+        public boolean success;
+        public int sentiment;         // 0=neg,1=neu,2=pos
+        public double posProb;
+        public double negProb;
+
+        public int getSentiment() {
+            return sentiment;
+        }
+
+        public double getPositiveProb() {
+            return posProb;
+        }
+
+        public double getNegativeProb() {
+            return negProb;
+        }
     }
 
-    /**
-     * 2. 获取或刷新 access_token，打印原始返回并做简单校验
-     */
+    /* ------------ 入口 ------------- */
+    public SentimentResult analyze(String rawHtml) {
+        SentimentResult res = new SentimentResult();
+
+        try {
+            /* 1. 清洗 & 截断 */
+            String plain = HtmlUtil.cleanHtmlTag(rawHtml)   // 去掉所有 HTML 标签
+                    .replace("&nbsp;", " ")   // 去 &nbsp;
+                    .replaceAll("\\s+", " ")  // 压缩多空白
+                    .trim();
+
+            if (plain.length() > 1024) {
+                plain = plain.substring(0, 1024);
+            }
+
+            /* 2. 调用百度接口 */
+            String url = "https://aip.baidubce.com/rpc/2.0/nlp/v1/sentiment_classify"
+                    + "?charset=UTF-8&access_token=" + getAccessToken();
+
+            String jsonReq = JSONUtil.createObj().set("text", plain).toString();
+            String raw     = HttpUtil.post(url, jsonReq, 5000);    // 5s 超时
+
+            JSONObject jo = JSONUtil.parseObj(raw);
+            if (!jo.containsKey("items") || jo.getJSONArray("items").isEmpty()) {
+                log.warn("Baidu NLP 无 items 字段或为空，raw={}", raw);
+                return res;    // success=false
+            }
+
+            JSONObject first = jo.getJSONArray("items").getJSONObject(0);
+            res.sentiment = first.getInt("sentiment");
+            res.posProb   = first.getDouble("positive_prob");
+            res.negProb   = first.getDouble("negative_prob");
+            res.success   = true;
+            return res;
+        } catch (Exception e) {
+            log.warn("Baidu NLP 调用失败：{}", e.toString());
+            return res;     // success=false
+        }
+    }
+
+    /* ------------ token 获取 ------------- */
     private String getAccessToken() {
-        // 如果缓存还没过期，直接返回
         if (accessToken != null && System.currentTimeMillis() < expiresAt) {
             return accessToken;
         }
-
         String url = "https://aip.baidubce.com/oauth/2.0/token"
                 + "?grant_type=client_credentials"
-                + "&client_id="     + apiKey
+                + "&client_id=" + apiKey
                 + "&client_secret=" + secretKey;
 
-        // 打印即将调用的 token 接口
-        System.out.println(">>> [Baidu.getAccessToken] 调用 URL = " + url);
-
-        // 调用并打印原始返回
-        Map<?,?> resp = rest.getForObject(url, Map.class);
-        System.out.println(">>> [Baidu.getAccessToken] 原始返回 = " + resp);
-
-        // 简单错误判定
-        if (resp == null || resp.get("access_token") == null) {
-            throw new RuntimeException("无法获取百度 AccessToken，请检查 API Key/Secret Key；返回值 = " + resp);
+        String raw = HttpUtil.get(url);
+        JSONObject jo = JSONUtil.parseObj(raw);
+        if (!jo.containsKey("access_token")) {
+            throw new RuntimeException("获取百度 token 失败: " + raw);
         }
-
-        // 缓存起来，并提前 60s 刷新
-        accessToken = (String) resp.get("access_token");
-        int expiresIn = ((Number) resp.get("expires_in")).intValue();
-        expiresAt = System.currentTimeMillis() + (expiresIn - 60) * 1000L;
+        accessToken = jo.getStr("access_token");
+        int ttl     = jo.getInt("expires_in", 0);
+        expiresAt   = System.currentTimeMillis() + (ttl - 60) * 1000L; // 提前 60s 刷新
         return accessToken;
-    }
-
-    /**
-     * 3. 调用情感分析接口，并打印 URL/Body/Raw Response
-     */
-    public SentimentResult analyze(String text) {
-        System.out.println(">>> [Baidu.analyze] 待分析文本 = " + text);
-
-        // 3.1 取 token
-        String token = getAccessToken();
-
-        // 3.2 拼 URL
-        String url = "https://aip.baidubce.com/rpc/2.0/nlp/v1/sentiment_classify"
-                + "?charset=UTF-8&access_token=" + token;
-        System.out.println(">>> [Baidu.analyze] 调用 URL  = " + url);
-
-        // 3.3 构造请求体
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String,String> body = Map.of("text", text);
-        HttpEntity<Map<String,String>> req = new HttpEntity<>(body, headers);
-        System.out.println(">>> [Baidu.analyze] 请求 Body = " + body);
-
-        // 3.4 发送并打印原始返回
-        Map<?,?> resp = rest.postForObject(url, req, Map.class);
-        System.out.println(">>> [Baidu.analyze] 原始返回 = " + resp);
-
-        // 3.5 解析结果
-        List<?> items = (List<?>) resp.get("items");
-        Map<?,?> item = (Map<?,?>) items.get(0);
-        int polarity   = ((Number) item.get("sentiment")).intValue();
-        double posProb = ((Number) item.get("positive_prob")).doubleValue();
-        double negProb = ((Number) item.get("negative_prob")).doubleValue();
-
-        return new SentimentResult(polarity, posProb, negProb);
     }
 }

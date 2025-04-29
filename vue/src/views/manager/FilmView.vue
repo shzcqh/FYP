@@ -77,7 +77,10 @@ const load = () => {
 }
 load()
 const reset = () => {
-
+  data.name       = null;
+  data.categoryId = null;
+  data.pageNum    = 1;
+  load();
 }
 
 

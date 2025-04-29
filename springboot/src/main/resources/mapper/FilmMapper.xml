@@ -17,7 +17,7 @@
 select film.*, category.name as categoryName from film
 left join category on film.category_id=category.id
 <where>
-    <if test="name !=null">and film.name like concat('%'}#{name}}'%')</if>
+    <if test="name !=null">and film.name like concat('%',#{name},'%')</if>
     <if test="categoryId !=null">and film.category_id = #{categoryId}</if>
 </where>
 

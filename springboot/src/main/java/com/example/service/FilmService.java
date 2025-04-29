@@ -15,10 +15,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class FilmService {
+    private static final String TYPE_LONG  = "Long comment";
+    private static final String TYPE_SHORT = "Short comment";
 
+    private static final Logger log = LoggerFactory.getLogger(FilmService.class);
     @Resource
     private FilmMapper filmMapper;
     @Resource
@@ -115,18 +120,19 @@ public class FilmService {
     /**
      * 推荐算法
      */
-    public List<Film> recommend(Integer userId) {
 
+    public List<Film> recommend(Integer userId) {
+        log.info(">>> recommend called, userId={}", userId);
         // 1. 获取所有的用户信息
         List<User> allUsers = userMapper.selectAll(null);
         // 2. 获取所有的电影信息
         List<Film> allFilms = filmMapper.selectAll(null);
         Comment comment = new Comment();
-        comment.setType("长评");
+        comment.setType(TYPE_LONG);
         // 3. 获取所有的长评评论信息
         List<Comment> allLongComment = commentMapper.selectAll(comment);
 
-        comment.setType("短评");
+        comment.setType(TYPE_SHORT);
         // 4. 获取所有的长评评论信息
         List<Comment> allShortComment = commentMapper.selectAll(comment);
         // 定义一个存储每个物品和每个用户关系的List
@@ -160,13 +166,14 @@ public class FilmService {
 
         // 数据准备结束后，就把这些数据一起喂给这个推荐算法
         List<Integer> filmsIds = UserCF.recommend(userId, data);
+        log.info("filmsIds -> {}", filmsIds);
         // 把物品id转换成物品
         List<Film> result = filmsIds.stream().map(filmsId -> allFilms.stream()
                         .filter(x -> x.getId().equals(filmsId)).findFirst().orElse(null))
                 .limit(5).collect(Collectors.toList());
 
         if (CollectionUtil.isEmpty(result)) {
-            // 随机给它推荐10个
+
             return getRandomPosts(5);
         }
         return result;
