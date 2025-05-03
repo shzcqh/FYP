@@ -23,7 +23,8 @@ public class CommentService {
         System.out.println(">>> [Service.add] 收到新增评论请求: " + comment.getComment());
         comment.setTime(DateUtil.now());
         // —— 新增：情感分析 ——
-        SentimentResult r = baiduSentimentService.analyze(comment.getComment());
+        SentimentResult r = baiduSentimentService.analyseSmart(comment.getComment());
+
         comment.setSentiment(r.getSentiment());
         comment.setPositiveProb(r.getPositiveProb());
         comment.setNegativeProb(r.getNegativeProb());

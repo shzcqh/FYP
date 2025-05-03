@@ -29,7 +29,7 @@ public class SentimentBackfillRunner implements CommandLineRunner {
         // 2) 逐条调用百度接口并回写
         for (Comment c : list) {
             try {
-                BaiduSentimentService.SentimentResult r = baiduSentimentService.analyze(c.getComment());
+                BaiduSentimentService.SentimentResult r = baiduSentimentService.analyseSmart(c.getComment());
                 commentMapper.updateSentiment(
                         c.getId(),
                         r.getSentiment(),
@@ -45,6 +45,6 @@ public class SentimentBackfillRunner implements CommandLineRunner {
         }
 
         // 如果你只想跑一次就退出，可以取消下面注释：
-         //System.exit(0);
+        //System.exit(0);
     }
 }
