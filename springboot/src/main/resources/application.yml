@@ -28,11 +28,10 @@ mybatis:
 
 # 文件上传的前缀 URL
 fileBaseUrl: http://localhost:9090
-  #Configure Baidu NLP
+
+
+# Configure Baidu NLP
 baidu:
-  translate:
-    app-id: w24TF3V9eSBYvW90eaPiSC3U
-    secret: NREt34wJcTSccXtBTZl4bBekr1MOPZCw
   nlp:
     api-key: w24TF3V9eSBYvW90eaPiSC3U
     secret-key: NREt34wJcTSccXtBTZl4bBekr1MOPZCw

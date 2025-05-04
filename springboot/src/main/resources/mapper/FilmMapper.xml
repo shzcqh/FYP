@@ -9,6 +9,7 @@
     </insert>
     <update id="updateById" parameterType="com.example.entity.Film">
         update film set name =#{name},cover=#{cover},descr=#{descr},year=#{year},director=#{director},actors=#{actors},category_id=#{categoryId},country=#{country},language=#{language},date=#{date},duration=#{duration},imdb=#{imdb}
+        WHERE id = #{id}
     </update>
     <delete id="deleteById" parameterType="java.lang.Integer">
         delete from film where id=#{id}
